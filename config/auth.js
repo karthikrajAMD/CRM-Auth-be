@@ -24,7 +24,7 @@ const decodeToken = async (token) => {
 };
 
 const validate = async (req, res, next) => {
-  if (req.headers && req.headers.authorization) {
+  if (req.headers.authorization) {
     let token = await req.headers.authorization.split(" ")[1];
     let decodeMyToken = await decodeToken(token);
     console.log(decodeMyToken);
