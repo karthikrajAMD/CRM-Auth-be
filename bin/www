@@ -7,6 +7,13 @@
 var app = require("../app");
 var debug = require("debug")("new-demo:server");
 var http = require("http");
+const socketio = require("socket.io");
+const {
+  addUser,
+  removeUser,
+  getUser,
+  getRoomUsers,
+} = require("../routes/entity");
 
 /**
  * Get port from environment and store in Express.
@@ -20,7 +27,7 @@ app.set("port", port);
  */
 
 var server = http.createServer(app);
-
+const io = socketio(server, { cors: { origin: "*" } });
 /**
  * Listen on provided port, on all network interfaces.
  */
@@ -86,3 +93,52 @@ function onListening() {
   var bind = typeof addr === "string" ? "pipe " + addr : "port " + addr.port;
   debug("Listening on " + bind);
 }
+
+io.on("connect", (socket) => {
+  socket.on("join", ({ user, room }, callback) => {
+    console.log(user, room);
+    const { response, error } = addUser({
+      id: socket.id,
+      user: user,
+      room: room,
+    });
+
+    console.log(response);
+
+    if (error) {
+      callback(error);
+      return;
+    }
+    socket.join(response.room);
+    socket.emit("message", {
+      user: "@CRM Admin",
+      text: `Welcome ${response.user} `,
+    });
+    socket.broadcast.to(response.room).emit("message", {
+      user: "@CRM Admin",
+      text: `${response.user} has joined`,
+    });
+
+    io.to(response.room).emit("roomMembers", getRoomUsers(response.room));
+  });
+
+  socket.on("sendMessage", (message, callback) => {
+    const user = getUser(socket.id);
+
+    io.to(user.room).emit("message", { user: user.user, text: message });
+
+    callback();
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected");
+    const user = removeUser(socket.id);
+
+    if (user) {
+      io.to(user.room).emit("message", {
+        user: "@CRM Admin",
+        text: `${user.user} has left`,
+      });
+    }
+  });
+});

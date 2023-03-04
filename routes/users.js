@@ -3,6 +3,7 @@ const { default: mongoose } = require("mongoose");
 var router = express.Router();
 const { mongodb, dbName, dbUrl } = require("../config/dbConfig");
 const { userModel } = require("../schema/UserSchema");
+
 const {
   hashedPassword,
   hashCompare,
@@ -14,6 +15,7 @@ const {
 /* GET users listing. */
 mongoose.connect(dbUrl);
 //......................
+
 router.get("/verify", validate, roleEmployee, async (req, res) => {
   try {
     let users = await userModel.find();
@@ -66,11 +68,13 @@ router.post("/login", async (req, res) => {
       if (await hashCompare(req.body.password, userExist.password)) {
         let token = await createToken(userExist);
         let email = userExist.email;
+        let name = userExist.firstName + "_" + userExist.lastName;
         res.send({
           statusCode: 200,
           message: "login successful",
           token,
           email,
+          name,
         });
       } else {
         res.send({ statusCode: 400, message: "Password is wrong" });
